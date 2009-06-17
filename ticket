@@ -1,7 +1,9 @@
 #!/usr/bin/ruby
 
 # == Synopsis 
-#   This is a quick application to enable simple management of lighthouse tickets via console.
+#  This is a quick application to enable simple management of lighthouse tickets via console. 
+#  You will need the lighthouse API ruby wrapper: http://github.com/Caged/lighthouse-api/tree/master
+#  and you will need to set the project and token vars in the application.
 #
 # == Examples
 #   This command uses the lighthouse API to provide simple console based management of tickets.
@@ -40,7 +42,9 @@ require 'date'
 require 'lighthouse'
 
 class App
-  VERSION = '0.0.1'
+  VERSION = '0.0.1'       
+  PROJECT = _YOUR_PROJECT_NAME_
+  TOKEN = YOUR_TOKEN_
   
   attr_reader :options
 
@@ -107,7 +111,7 @@ class App
     end
 
     # True if required arguments were provided
-    def arguments_valid?        
+    def arguments_valid?      
       case @arguments.length
       when 1
         %w[projects milestones users list].include?(@arguments[0])      
@@ -125,8 +129,8 @@ class App
     # Setup the arguments
     def process_arguments
       # TO DO - place in local vars, etc
-      Lighthouse.account = 'packetnode'
-      Lighthouse.token = '0056bc8c1a0db0b425f43085f2575b1b6418052c'
+      Lighthouse.account = PROJECT
+      Lighthouse.token = TOKEN
       @project_id = 29630
       @project = Lighthouse::Project.find(@project_id)   
                                          

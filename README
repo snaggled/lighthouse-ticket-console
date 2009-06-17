@@ -1,0 +1,45 @@
+Synopsis
+--------
+  This is a quick application to enable simple management of lighthouse tickets via console. 
+  You will need the lighthouse API ruby wrapper: http://github.com/Caged/lighthouse-api/tree/master
+  and you will need to set the project and token vars in the application.
+
+
+Examples
+--------
+  This command uses the lighthouse API to provide simple console based management of tickets.
+    ticket list
+
+
+Usage
+-----
+  ticket projects - list all projects
+  ticket milestones - list all milestones
+  ticket list - list all tickets
+  ticket show 51
+  ticket resolve 51
+  ticket reopen 51
+  ticket assign 51 1024 (theres no command to list the users, you will have to get the user ids via the web interface)
+  ticket milestone 51 'v1'
+  ticket new title [user id] [milestone id]
+
+  For help use: ticket -h
+
+
+Options
+-------
+  -h, --help          Displays help message
+  -v, --version       Display the version, then exit
+  -q, --quiet         Output as little as possible, overrides verbose
+  -V, --verbose       Verbose output
+
+
+Author
+------
+  Philip Mcmahon philip@packetnode.com
+
+
+Copyright
+---------
+  Copyright (c) 2007 Philip Mcmahon. Licensed under the MIT License:
+  http://www.opensource.org/licenses/mit-license.php
