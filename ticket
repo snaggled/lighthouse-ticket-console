@@ -1,0 +1,249 @@
+#!/usr/bin/ruby
+
+# == Synopsis 
+#   This is a quick application to enable simple management of lighthouse tickets via console.
+#
+# == Examples
+#   This command uses the lighthouse API to provide simple console based management of tickets.
+#     ticket list
+#
+# == Usage 
+#   ticket projects - list all projects
+#   ticket milestones - list all milestones
+#   ticket list - list all tickets 
+#   ticket show 51
+#   ticket resolve 51
+#   ticket reopen 51
+#   ticket assign 51 1024 (theres no command to list the users, you will have to get the user ids via the web interface)
+#   ticket milestone 51 'v1'
+#   ticket new title [user id] [milestone id]
+#
+#   For help use: ticket -h
+#
+# == Options
+#   -h, --help          Displays help message
+#   -v, --version       Display the version, then exit
+#   -q, --quiet         Output as little as possible, overrides verbose
+#   -V, --verbose       Verbose output
+#
+# == Author
+#   Philip Mcmahon philip@packetnode.com
+#
+# == Copyright
+#   Copyright (c) 2007 Philip Mcmahon. Licensed under the MIT License:
+#   http://www.opensource.org/licenses/mit-license.php
+
+require 'optparse' 
+require 'rdoc/usage'
+require 'ostruct'
+require 'date'
+require 'lighthouse'
+
+class App
+  VERSION = '0.0.1'
+  
+  attr_reader :options
+
+  def initialize(arguments, stdin)
+    @arguments = arguments
+    @stdin = stdin
+    
+    # Set defaults
+    @options = OpenStruct.new
+    @options.verbose = false
+    @options.quiet = false
+    # TO DO - add additional defaults
+  end
+
+  # Parse options, check arguments, then process the command
+  def run
+        
+    if parsed_options? && arguments_valid? 
+      
+      puts "Start at #{DateTime.now}\n\n" if @options.verbose
+      
+      output_options if @options.verbose # [Optional]
+            
+      process_arguments            
+      process_command
+      
+      puts "\nFinished at #{DateTime.now}" if @options.verbose
+      
+    else
+      output_usage
+    end
+      
+  end
+  
+  protected
+  
+    def parsed_options?
+      
+      # Specify options
+      opts = OptionParser.new 
+      opts.on('-v', '--version')    { output_version ; exit 0 }
+      opts.on('-h', '--help')       { output_help }
+      opts.on('-V', '--verbose')    { @options.verbose = true }  
+      opts.on('-q', '--quiet')      { @options.quiet = true }
+      # TO DO - add additional options
+            
+      opts.parse!(@arguments) rescue return false
+      
+      process_options
+      true      
+    end
+
+    # Performs post-parse processing on options
+    def process_options
+      @options.verbose = false if @options.quiet
+    end
+    
+    def output_options
+      puts "Options:\n"
+      
+      @options.marshal_dump.each do |name, val|        
+        puts "  #{name} = #{val}"
+      end
+    end
+
+    # True if required arguments were provided
+    def arguments_valid?        
+      case @arguments.length
+      when 1
+        %w[projects milestones users list].include?(@arguments[0])      
+      when 2
+        %w[show resolve new reopen].include?(@arguments[0])      
+      when 3
+        %w[assign new milestone].include?(@arguments[0])   
+      when 4
+        %w[new].include?(@arguments[0])   
+      else
+        false
+      end                     
+    end                                      
+    
+    # Setup the arguments
+    def process_arguments
+      # TO DO - place in local vars, etc
+      Lighthouse.account = 'packetnode'
+      Lighthouse.token = '0056bc8c1a0db0b425f43085f2575b1b6418052c'
+      @project_id = 29630
+      @project = Lighthouse::Project.find(@project_id)   
+                                         
+      if %w[show resolve assign reopen milestone].include?(@arguments[0])
+        @id = @arguments[1]     
+        
+        case @arguments[0]
+        when 'assign'
+          @assigned = @arguments[2]
+        when 'milestone'
+          @milestone = @arguments[2]    
+        end
+   
+      elsif %w[new].include?(@arguments[0])     
+        p @arguments[1]
+        @title = @arguments[1]    
+        p @arguments[1]
+        p @title
+        @assigned = @arguments[2]   
+        @milestone = @arguments[3]
+      end                            
+            
+    end
+    
+    def output_help
+      output_version
+      RDoc::usage() #exits app
+    end
+    
+    def output_usage
+      RDoc::usage('usage') # gets usage from comments above
+    end
+    
+    def output_version
+      puts "#{File.basename(__FILE__)} version #{VERSION}"
+    end
+    
+    def process_command
+      command = @arguments.first
+      if self.respond_to?(command)
+        self.send(command.to_sym)
+      else
+        puts "Unsupported Command: #{command}"
+      end
+    end
+    
+    def projects
+      Lighthouse::Project.find(:all).each {|p| puts "id: #{p.id}, name:#{p.name}"}
+    end        
+    
+    def milestones
+      @project.milestones.each {|m| puts "id: #{m.id}, name:#{m.title}, open tickets:#{m.open_tickets_count}"}   
+    end                             
+    
+    def users
+      Lighthouse::User.memberships
+    end
+            
+    def print(t)                                                                
+      puts "id: #{t.id}, title: #{t.title}, assigned: #{t.user_name}, milestone:#{t.milestone_id}, :status: #{t.state}"
+    end
+
+    def list
+      @project.tickets.each {|t| print t}
+    end                  
+    
+    def show                             
+      ticket = Lighthouse::Ticket.find(@id, :params => { :project_id => @project_id })
+      print ticket
+    end
+
+    def assign     
+      ticket = Lighthouse::Ticket.find(@id, :params => { :project_id => @project_id })
+      ticket.assigned_user_id = @assigned
+      ticket.save       
+      print ticket
+    end
+                 
+    def milestone     
+      ticket = Lighthouse::Ticket.find(@id, :params => { :project_id => @project_id })
+      ticket.milestone_id = @milestone
+      ticket.save       
+      print ticket
+    end
+    
+    def resolve        
+      ticket = Lighthouse::Ticket.find(@id, :params => { :project_id => @project_id })
+      ticket.state = 'resolved'
+      ticket.save           
+      print ticket
+    end
+    
+    def reopen        
+      ticket = Lighthouse::Ticket.find(@id, :params => { :project_id => @project_id })
+      ticket.state = 'open'
+      ticket.save       
+      print ticket
+    end
+                     
+    
+    def new                
+      p "asdasdas #{@title}     "
+      p @assigned
+      p @milestone
+      ticket = Lighthouse::Ticket.new(:project_id => @project_id)
+      ticket.title = @title          
+      ticket.assigned_user_id = @assigned if @assigned
+      ticket.milestone_id = @milestone if @milestone 
+      ticket.status = 'new'
+      ticket.save
+    end
+
+    def process_standard_input
+      input = @stdin.read      
+    end
+end
+
+# Create and run the application
+app = App.new(ARGV, STDIN)
+app.run
